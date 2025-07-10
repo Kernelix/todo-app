@@ -10,17 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: todo_app
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: secret
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,11 +23,19 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
-      - name: Build Docker containers
-        run: docker-compose -f docker-compose.yml build
-
-      - name: Verify containers can start
+      - name: Build and test containers
         run: |
+          # Собираем контейнеры
+          docker-compose -f docker-compose.yml build
+
+          # Запускаем контейнеры с другим портом для PostgreSQL
+          sed -i 's/5432:5432/5433:5432/g' docker-compose.yml
           docker-compose -f docker-compose.yml up -d
+
+          # Проверяем состояние контейнеров
           docker ps -a
+          docker-compose -f docker-compose.yml logs app
+
+          # Останавливаем контейнеры
           docker-compose -f docker-compose.yml down
+          git checkout docker-compose.yml
